@@ -1,3 +1,6 @@
+package command.builder.text
+
+import command.text.RunTextCommand
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.behavior.reply
 import dev.kord.core.event.message.MessageCreateEvent
@@ -22,9 +25,4 @@ suspend fun MessageCreateEvent.textCommands(messageStr:String){
 
 
 const val textCommandPrefix = "!"
-interface TextCommand{
-    fun pre(str:String) = textCommandPrefix+str
-    val prefix:String
-    abstract suspend fun MessageCreateEvent.execute(body:String)
-}
 
