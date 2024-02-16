@@ -1,10 +1,9 @@
-import command.builder.slash.RootCommand
-import command.builder.slash.SlashCommand
-import command.builder.slash.SlashCommandWithGroup
-import command.builder.slash.SlashCommandWithSub
+import command.builder.slash.*
 import command.builder.text.textCommands
-import command.slash.Run
+import command.slash.Info
 import dev.kord.core.Kord
+import dev.kord.core.entity.interaction.ChatInputCommandInteraction
+import dev.kord.core.event.interaction.ChatInputCommandInteractionCreateEvent
 import dev.kord.core.event.interaction.GlobalChatInputCommandInteractionCreateEvent
 import dev.kord.core.event.message.MessageCreateEvent
 import dev.kord.core.on
@@ -12,17 +11,16 @@ import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.serialization.kotlinx.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.cbor.Cbor
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.protobuf.ProtoBuf
+import java.io.File
+import java.net.ConnectException
 import java.util.*
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -35,17 +33,26 @@ val client = HttpClient(CIO) {
     }
 }
 
-val slashCommands = arrayOf<RootCommand>(Run())
+val slashCommands by lazy {
+    arrayOf<RootCommand>(
+        Info()
+    )
+}
 
 suspend fun main(args: Array<String>) {
+
     val props = withContext(Dispatchers.IO) {
         Properties().apply {
-            load(File("local.properties").inputStream())
+            load(File("env.properties").inputStream())
         }
     }
-
-    val kord = Kord(props["discord.token"] as String)
+    val env = props["discord.env"] as String
+    println("Starting... on $env environment")
+    println(props["discord.${env}.token"] as String)
+    val kord = Kord(props["discord.${env}.token"] as String)
+    println("Register slash-commands")
     slashCommands.forEach {
+        println("\tRegister ${(it as? BaseCommand)?.name}")
         it.register(kord)
     }
 
@@ -56,13 +63,15 @@ suspend fun main(args: Array<String>) {
         val msgContent = message.content
         textCommands(msgContent)
     }
-    kord.on<GlobalChatInputCommandInteractionCreateEvent> {
+    kord.on<ChatInputCommandInteractionCreateEvent> {
+        println(interaction.command)
         when (interaction.command) {
             is dev.kord.core.entity.interaction.GroupCommand -> slashCommands.filterIsInstance<SlashCommandWithGroup>()
             is dev.kord.core.entity.interaction.RootCommand -> slashCommands.filterIsInstance<SlashCommand>()
             is dev.kord.core.entity.interaction.SubCommand -> slashCommands.filterIsInstance<SlashCommandWithSub>()
         }.single { it.name == interaction.command.rootName }.exec(interaction)
     }
+    println("Login")
     kord.login {
         // we need to specify this to receive the content of messages
         @OptIn(PrivilegedIntent::class)

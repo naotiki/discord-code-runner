@@ -11,7 +11,7 @@ suspend fun MessageCreateEvent.textCommands(messageStr:String){
     textCommandList.singleOrNull {
         messageStr.startsWith(it.prefix)
     }?.run {
-        if (false&&message.author?.id != Snowflake(684655306764058644)){
+        if (this@textCommands.guildId!=Snowflake(1181064326166085772)&&message.author?.id != Snowflake(684655306764058644)){
             message.reply {
                 content="""まだNaotikiしか使えません
                     |ごめんね
